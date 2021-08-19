@@ -146,7 +146,7 @@ Tensor& range_cpu_out(const Scalar& start, const Scalar& end, const Scalar& step
   return result;
 }
 
-Tensor& arange_cpu_out(const Scalar& start, const Scalar& end, const Scalar& step, Tensor& result) {
+const Tensor& arange_cpu_out(const Scalar& start, const Scalar& end, const Scalar& step, const Tensor& result) {
   AT_DISPATCH_ALL_TYPES_AND(kBFloat16, result.scalar_type(), "arange_cpu", [&]() {
     using accscalar_t = at::acc_type<scalar_t, false>;
     auto xstart = start.to<accscalar_t>();
