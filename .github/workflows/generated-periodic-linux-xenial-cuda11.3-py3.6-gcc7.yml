@@ -229,7 +229,7 @@ jobs:
       ENABLE_NOGPU_NO_AVX_TEST: ''
       ENABLE_NOGPU_NO_AVX2_TEST: ''
       ENABLE_SLOW_TEST: ''
-      NUM_TEST_SHARDS: 2
+      NUM_TEST_SHARDS: 6
       MULTIGPU_RUNNER_TYPE: linux.16xlarge.nvidia.gpu
       NOGPU_RUNNER_TYPE: linux.2xlarge
       PR_BODY: ${{ github.event.pull_request.body }}
@@ -316,6 +316,12 @@ jobs:
       - name: Preserve github env variables for use in docker
         run: |
           env | grep '^GITHUB' > "/tmp/github_env_${GITHUB_RUN_ID}"
+      - name: Show env
+        env:
+          BUILD_ENVIRONMENT: periodic-linux-xenial-cuda11.3-py3.6-gcc7-${{ matrix.config }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          printenv | sort
       - name: Test PyTorch
         env:
           BUILD_ENVIRONMENT: periodic-linux-xenial-cuda11.3-py3.6-gcc7-${{ matrix.config }}
@@ -326,7 +332,7 @@ jobs:
           else
             TEST_COMMAND=.jenkins/pytorch/test.sh
           fi
-          if [[ $NUM_TEST_SHARDS -ne 2 ]]; then
+          if [[ $NUM_TEST_SHARDS -lt 2 ]]; then
             export SHARD_NUMBER=0
           fi
           # TODO: Stop building test binaries as part of the build phase
