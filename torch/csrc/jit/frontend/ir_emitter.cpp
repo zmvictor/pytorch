@@ -1838,6 +1838,8 @@ struct to_ir {
           }
           if ((typ->isSubtypeOf(AnyListType::get()) &&
                maybeOfKind(ListType::Kind, actual_type)) ||
+              (typ->isSubtypeOf(AnyDictType::get()) &&
+               maybeOfKind(DictType::Kind, actual_type)) ||
               (typ->isSubtypeOf(AnyTupleType::get()) &&
                maybeOfKind(TupleType::Kind, actual_type))) {
             return false;
