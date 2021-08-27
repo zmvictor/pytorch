@@ -123,16 +123,23 @@ constexpr struct trivial_init_t {
 
 // 20.5.7, Disengaged state indicator
 struct nullopt_t {
-  constexpr explicit nullopt_t(int) {}
+  enum class Construct { Token };
+
+  constexpr explicit nullopt_t(Construct) {}
 };
-constexpr nullopt_t nullopt{0};
+
+constexpr nullopt_t nullopt{nullopt_t::Construct::Token};
 
 // 20.5.8, class bad_optional_access
-class bad_optional_access : public std::logic_error {
+class bad_optional_access : public std::exception {
  public:
-  explicit bad_optional_access(const std::string& what_arg)
-      : logic_error{what_arg} {}
-  explicit bad_optional_access(const char* what_arg) : logic_error{what_arg} {}
+  bad_optional_access() = default;
+
+  virtual ~bad_optional_access() = default;
+
+  const char* what() const noexcept override {
+    return "bad optional access";
+  }
 };
 
 template <class T>
@@ -762,20 +769,18 @@ class optional : private OptionalBase<T> {
   }
 
   TR2_OPTIONAL_HOST_CONSTEXPR T const& value() const& {
-    return initialized()
-        ? contained_val()
-        : (throw bad_optional_access("bad optional access"), contained_val());
+    return initialized() ? contained_val()
+                         : (throw bad_optional_access(), contained_val());
   }
 
   TR2_OPTIONAL_HOST_CONSTEXPR T& value() & {
-    return initialized()
-        ? contained_val()
-        : (throw bad_optional_access("bad optional access"), contained_val());
+    return initialized() ? contained_val()
+                         : (throw bad_optional_access(), contained_val());
   }
 
   TR2_OPTIONAL_HOST_CONSTEXPR T&& value() && {
     if (!initialized())
-      throw bad_optional_access("bad optional access");
+      throw bad_optional_access();
     return std::move(contained_val());
   }
 
@@ -909,8 +914,7 @@ class optional<T&> {
   }
 
   constexpr T& value() const {
-    return ref ? *ref
-               : (throw bad_optional_access("bad optional access"), *ref);
+    return ref ? *ref : (throw bad_optional_access(), *ref);
   }
 
   explicit constexpr operator bool() const noexcept {
