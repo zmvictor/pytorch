@@ -14,14 +14,14 @@ from functools import reduce
 
 from torch.testing._internal.common_utils import \
     (TestCase, run_tests, TEST_SCIPY, IS_MACOS, IS_WINDOWS, slowTest,
-     TEST_WITH_ASAN, make_tensor, TEST_WITH_ROCM, IS_FBCODE, IS_REMOTE_GPU,
+     TEST_WITH_ASAN, TEST_WITH_ROCM, IS_FBCODE, IS_REMOTE_GPU,
      iter_indices, gradcheck, gradgradcheck)
 from torch.testing._internal.common_device_type import \
     (instantiate_device_type_tests, dtypes,
      onlyCPU, skipCUDAIf, skipCUDAIfNoMagma, skipCPUIfNoLapack, precisionOverride,
      skipCUDAIfNoMagmaAndNoCusolver, skipCUDAIfRocm, onlyOnCPUAndCUDA, dtypesIfCUDA,
      onlyCUDA, skipCUDAVersionIn, skipMeta, skipCUDAIfNoCusolver)
-from torch.testing import floating_and_complex_types, floating_types, all_types
+from torch.testing import floating_and_complex_types, floating_types, all_types, make_tensor
 from torch.testing._internal.common_cuda import SM53OrLater, tf32_on_and_off, CUDA11OrLater, CUDA9
 from torch.distributions.binomial import Binomial
 
@@ -453,6 +453,11 @@ class TestLinalg(TestCase):
         self.assertEqual(ans, out)
         expected = torch.linalg.cholesky(A)
         self.assertEqual(expected, out)
+
+        # check the upper= variant
+        expected = torch.linalg.cholesky(A).transpose(-2, -1).conj()
+        actual = torch.linalg.cholesky(A, upper=True)
+        self.assertEqual(expected, actual)
 
     @skipCUDAIfNoMagma
     @skipCPUIfNoLapack
@@ -904,16 +909,13 @@ class TestLinalg(TestCase):
             self.assertEqual(actual_w, expected_w)
             # sign of eigenvectors is not unique and therefore absolute values are compared
             self.assertEqual(abs(actual_v), abs(expected_v))
-            # additionally we can flip the sign and then compare the values
-            # let's choose the convention that the first element of the eigenvector should be positive,
-            # otherwise flip the sign of the eigenvector
+            # additionally we can multiply the eigenvector with a phase factor e^{i\phi} and then compare the values
+            # let's choose the convention that the first element of the eigenvectors from torch and numpy be the same
+            # for real inputs, this phase factor is plus or minus one
             if matrix.numel() > 0:
-                sign = np.sign(expected_v[..., 0, :]).reshape(batch + (1, shape))
-                expected_v = sign * expected_v
-                torch_real_slice = actual_v[..., 0, :].real if dtype.is_complex else actual_v[..., 0, :]
-                sign = torch.sign(torch_real_slice).reshape(batch + (1, shape))
-                actual_v = sign * actual_v
-                self.assertEqual(actual_v, expected_v)
+                phase = torch.from_numpy(expected_v[..., 0, :]).to(device=device).div(actual_v[..., 0, :])
+                actual_v_rotated = actual_v * phase.unsqueeze(-2).expand_as(actual_v)
+                self.assertEqual(actual_v_rotated, expected_v)
 
             # check the out= variant
             out_w = torch.empty_like(actual_w)
@@ -2753,7 +2755,7 @@ class TestLinalg(TestCase):
             # check if u, s, v is a SVD
             u, s, v = u[..., :q], s[..., :q], v[..., :q]
             A = u.matmul(s.diag_embed()).matmul(v.transpose(-2, -1))
-            self.assertEqual(A, a)
+            self.assertEqual(A, a, rtol=1e-7, atol=2e-7)
 
             # check if svd_lowrank produces same singular values as torch.svd
             U, S, V = torch.svd(a)
@@ -2811,8 +2813,11 @@ class TestLinalg(TestCase):
         self.assertEqual(t, t2)
 
     def _test_svd_helper(self, shape, some, col_maj, device, dtype):
-        cpu_tensor = torch.randn(shape, device='cpu').to(dtype)
-        device_tensor = cpu_tensor.to(device=device)
+        # To have accurate tests and less false positives on different CPUs and GPUs,
+        # we use double or complex double accuracy for CPU reference.
+        cpu_dtype = torch.complex128 if dtype.is_complex else torch.float64
+        cpu_tensor = torch.randn(shape, device='cpu', dtype=cpu_dtype)
+        device_tensor = cpu_tensor.to(device=device, dtype=dtype)
         if col_maj:
             cpu_tensor = cpu_tensor.t()
             device_tensor = device_tensor.t()
@@ -2826,7 +2831,7 @@ class TestLinalg(TestCase):
         #   then the corresponding column of the V has to be changed.
         # Thus here we only compare result[..., :m].abs() from CPU and device.
         for x, y in zip(cpu_result, device_result):
-            self.assertEqual(x[..., :m].abs(), y[..., :m].abs(), atol=1e-5, rtol=0)
+            self.assertEqual(x[..., :m].abs(), y[..., :m].abs(), exact_dtype=False)
 
     @skipCUDAIfNoMagma
     @skipCPUIfNoLapack
@@ -2968,6 +2973,26 @@ class TestLinalg(TestCase):
         ns = [5, 2, 0]
         for batch, (m, n) in itertools.product(batches, product(ns, ns)):
             run_test((*batch, m, n))
+
+    @skipCUDAIfNoCusolver  # MAGMA backend doesn't work in this case
+    @skipCUDAIfRocm
+    @skipCPUIfNoLapack
+    @dtypes(torch.float32, torch.float64, torch.complex64, torch.complex128)
+    def test_svd_memory_allocation(self, device, dtype):
+        # test for https://github.com/pytorch/pytorch/issues/61949
+        # the problem was that tensors of incorrect size were allocated and then narrowed
+        m = 3
+        n = 2**20
+        a = make_tensor((m, n), dtype=dtype, device=device)
+        # the following should run without errors
+        result = torch.linalg.svdvals(a)
+        result = torch.linalg.svd(a, full_matrices=False)
+
+        out0 = torch.empty_like(result[0])
+        out1 = torch.empty_like(result[1])
+        out2 = torch.empty_like(result[2])
+        torch.linalg.svdvals(a, out=out0)
+        torch.linalg.svd(a, full_matrices=False, out=(out0, out1, out2))
 
     def cholesky_solve_test_helper(self, A_dims, b_dims, upper, device, dtype):
         from torch.testing._internal.common_utils import random_hermitian_pd_matrix
@@ -6028,6 +6053,11 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
                     m2 = torch.randn(k, m, device=device).to(dtype)
                     self._test_addmm_addmv(torch.addmm, M, m1, m2)
 
+                    m1 = torch.randn(n, k + 1, device=device).to(dtype)
+                    m2 = torch.randn(k, m, device=device).to(dtype)
+                    self.assertRaisesRegex(RuntimeError, f"{n}x{k + 1}.*{k}x{m}", lambda: torch.addmm(M, m1, m2))
+                    self.assertRaisesRegex(RuntimeError, f"{n}x{k + 1}.*{k}x{m}", lambda: torch.mm(m1, m2))
+
     @unittest.skipIf(IS_FBCODE and IS_REMOTE_GPU, "cublas runtime error")
     @onlyCUDA
     def test_matmul_45724(self, device):
@@ -6134,6 +6164,38 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
                 genf = genf_float
 
             _test_mm(n, m, p, dtype, genf)
+
+    @onlyOnCPUAndCUDA
+    def test_mm_bmm_non_memory_dense(self, device):
+        def _slice(tensor, fn):
+            return fn(tensor)[..., ::2]
+        A = torch.randn(3, 6, dtype=torch.cfloat, device=device)
+        B = torch.randn(3, 3, dtype=torch.cfloat, device=device)
+        out = torch.empty(3, 3, device=device, dtype=torch.complex64).t()
+        out1 = torch.empty(3, 3, device=device, dtype=torch.complex64).t()
+        A_conj = _slice(A, torch.conj)
+        A_conj_physical = _slice(A, torch.conj_physical)
+
+        self.assertEqual(torch.mm(A_conj, B, out=out), torch.mm(A_conj_physical, B, out=out))
+        self.assertEqual(torch.mm(A_conj.t(), B, out=out), torch.mm(A_conj_physical.t(), B, out=out))
+
+        Ab = torch.randn(2, 3, 6, dtype=torch.cfloat, device=device)
+        Bb = torch.randn(2, 3, 3, dtype=torch.cfloat, device=device)
+        Bb_ = torch.randn(1, 3, 3, dtype=torch.cfloat, device=device).expand(2, 3, 3)
+        out_b = torch.empty(2, 3, 3, device=device, dtype=torch.complex64).transpose(-1, -2)
+
+        Ab_conj = _slice(Ab, torch.conj)
+        Ab_conj_physical = _slice(Ab, torch.conj_physical)
+
+        def t_b(tensor):
+            return tensor.transpose(-1, -2)
+
+        self.assertEqual(torch.bmm(Ab_conj, Bb, out=out_b), torch.bmm(Ab_conj_physical, Bb, out=out_b))
+        self.assertEqual(torch.bmm(t_b(Ab_conj), Bb, out=out_b), torch.bmm(t_b(Ab_conj_physical), Bb, out=out_b))
+
+        # test broadcasting
+        self.assertEqual(torch.bmm(Ab_conj, Bb_, out=out_b), torch.bmm(Ab_conj_physical, Bb_, out=out_b))
+        self.assertEqual(torch.bmm(t_b(Ab_conj), Bb_, out=out_b), torch.bmm(t_b(Ab_conj_physical), Bb_, out=out_b))
 
     @onlyOnCPUAndCUDA
     @dtypes(torch.float32, torch.float64)
@@ -7476,6 +7538,19 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
         run_test((2, 1, 3, 4, 4), (4, 6))  # broadcasting b
         run_test((4, 4), (2, 1, 3, 4, 2))  # broadcasting A
         run_test((1, 3, 1, 4, 4), (2, 1, 3, 4, 5))  # broadcasting A & b
+
+    @onlyCUDA
+    @skipCUDAIfNoMagma
+    @dtypes(torch.float32, torch.float64, torch.complex64, torch.complex128)
+    # this tests https://github.com/pytorch/pytorch/issues/36921
+    def test_lu_solve_large_matrices(self, device, dtype):
+        def run_test(A_dims, b_dims):
+            b, A, LU_data, LU_pivots = self.lu_solve_test_helper(A_dims, b_dims, True, device, dtype)
+            x = torch.lu_solve(b, LU_data, LU_pivots)
+            Ax = torch.matmul(A, x)
+            self.assertEqual(Ax, b.expand_as(Ax))
+
+        run_test((1, 1), (1, 1, 1025))
 
     @skipCUDAIfNoMagma
     @skipCPUIfNoLapack

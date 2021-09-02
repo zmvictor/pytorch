@@ -52,6 +52,7 @@ struct Node;
 
 namespace at {
 
+class OptionalTensorRef;
 class Tensor;
 using TensorList = ArrayRef<Tensor>;
 
@@ -96,6 +97,7 @@ class TORCH_API Tensor {
   explicit Tensor(unsafe_borrow_t, const Tensor& rhs)
       : impl_(c10::intrusive_ptr<at::TensorImpl, UndefinedTensorImpl>::reclaim(rhs.impl_.get())) {}
   friend MaybeOwnedTraits<Tensor>;
+  friend OptionalTensorRef;
 
  public:
   Tensor(){};
@@ -387,11 +389,23 @@ class TORCH_API Tensor {
   }
 
   // sets the conjugate bit of a tensor.
-  // NOTE: Conjugate bit is supposed to be a read-only field. Only change this, if you are extremely sure
+  // NOTE: Conjugate bit is supposed to be a read-only field. Only change this, if you are sure
   // that's what you want. Changing this might lead to incorrect behavior since conjugation is
   // a lazy operation and we rely on this bit to determine if a conjugation needs to be materialized.
   inline void _set_conj(bool conjugate) const {
     impl_->_set_conj(conjugate);
+  }
+
+  inline bool is_neg() const {
+    return impl_->is_neg();
+  }
+
+  // sets the negative bit of a tensor.
+  // NOTE: Negative bit is supposed to be a read-only field. Only change this, if you are sure
+  // that's what you want. Changing this might lead to incorrect behavior since we rely on this
+  // bit to determine if a negation needs to be materialized.
+  inline void _set_neg(bool negative) const {
+    impl_->_set_neg(negative);
   }
 
   /// Returns a `Tensor`'s layout.
@@ -439,6 +453,11 @@ class TORCH_API Tensor {
     return impl_->is_xla();
   }
 
+  /// Returns if a `Tensor` has Lazy backend.
+  bool is_lazy() const {
+    return impl_->is_lazy();
+  }
+
   /// Returns if a `Tensor` has HIP backend.
   bool is_hip() const {
     // NB: this is not a native function to avoid dispatching overhead.
@@ -473,6 +492,12 @@ class TORCH_API Tensor {
   bool is_mlc() const {
     // NB: this is not a native function to avoid dispatching overhead.
     return impl_->is_mlc();
+  }
+
+  /// Returns if a `Tensor` is ort tensor.
+  bool is_ort() const {
+    // NB: this is not a native function to avoid dispatching overhead.
+    return impl_->is_ort();
   }
 
   /// Returns if a `Tensor` is vulkan tensor.
