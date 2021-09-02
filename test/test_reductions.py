@@ -20,9 +20,6 @@ from torch.testing._internal.common_device_type import (
 from torch.testing._internal.common_methods_invocations import (
     ReductionOpInfo, reduction_ops)
 
-if TEST_SCIPY:
-    import scipy.special
-
 # TODO: replace with make_tensor
 def _generate_input(shape, dtype, device, with_extremal):
     if shape == ():

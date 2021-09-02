@@ -56,8 +56,6 @@ ALLOW_LIST = [
     ("aten::_cudnn_rnn_flatten_weight", datetime.date(2020, 12, 31)),
     ("aten::_cudnn_rnn", datetime.date(2020, 12, 31)),
     ("aten::_cudnn_rnn_backward", datetime.date(2020, 12, 31)),
-    ("aten::quantile", datetime.date(2021, 7, 30)),
-    ("aten::nanquantile", datetime.date(2021, 7, 30)),
     ("aten::make_dual", datetime.date(2021, 2, 20)),
     ("aten::unpack_dual", datetime.date(2021, 2, 20)),
     ("aten::_fft_with_size", datetime.date(2021, 1, 31)),
@@ -116,6 +114,8 @@ ALLOW_LIST = [
     ("aten::_fake_quantize_per_tensor_affine_cachemask_tensor_qparams", datetime.date(2021, 8, 15)),
     ("aten::_cumsum", datetime.date(2021, 8, 31)),
     ("aten::_cumprod", datetime.date(2021, 8, 31)),
+    ("aten::quantile", datetime.date(2021, 9, 30)),
+    ("aten::nanquantile", datetime.date(2021, 9, 30)),
 ]
 
 ALLOW_LIST_COMPILED = [
