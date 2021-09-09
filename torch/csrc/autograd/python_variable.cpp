@@ -105,6 +105,44 @@ class PyInterpreterHolder {
 };
 PyInterpreterHolder self_interpreter;
 
+// Utility function that can be used to properly clear a pyobj associated
+// with the given Tensor.
+// For classic binding, this would be as simple as clearing the field and
+// decrefing the pyobj but the special logic that keep Tensor's pyobj alive
+// would prevent this from working as expected.
+// Here we first properly break the link Tensor -> pyobj. Then we break the
+// link pyobj -> Tensor. And finally decref the pyobj.
+//
+// This function assumes that it is used just before calling into
+// init_pyobj() (via THPVariable_NewWithVar) in particular for the interpreter
+// state.
+static void unsafe_clear_pyobj(const Variable& tensor) {
+  c10::optional<PyObject*> mb_obj =
+      tensor.unsafeGetTensorImpl()->check_pyobj(self_interpreter.get());
+  if (!mb_obj.has_value()) {
+    return;
+  }
+
+  PyObject* obj = mb_obj.value();
+  if (!obj) {
+    return;
+  }
+
+  // Steal the reference from the Tensor
+  // TODO: Should we also clear the interpreter here? Leaving it as-is ensures that
+  // the DEFINITELY_UNINITIALIZED flag from the init_pyobj() call that follows this
+  // function is actually ok because the interpreter prevented any other thread from
+  // touching that Tensor.
+  tensor.unsafeGetTensorImpl()->unchecked_clear_pyobj(self_interpreter.get());
+  tensor.unsafeGetTensorImpl()->set_owns_pyobj(false);
+  // And break the link from the pyobj to this Tensor
+  TORCH_INTERNAL_ASSERT(THPVariable_Check(obj));
+  reinterpret_cast<THPVariable*>(obj)->cdata = MaybeOwned<Variable>();
+
+  // Now we can free the pyobj without impacting the Tensor
+  Py_DECREF(obj);
+}
+
 } // anonymous namespace
 
 c10::impl::PyInterpreter* getPyInterpreter() {
@@ -308,9 +346,12 @@ static PyObject* THPVariable_as_subclass(PyObject* _self, PyObject* args, PyObje
   if (!PyType_Check(cls)) {
     throw torch::TypeError("cls must be a type (got %s)", Py_TYPE(cls)->tp_name);
   }
+  auto data = self.alias();
+  unsafe_clear_pyobj(data);
+
   return THPVariable_NewWithVar(
       (PyTypeObject*)cls,
-      self.alias(),
+      std::move(data),
       c10::impl::PyInterpreterStatus::DEFINITELY_UNINITIALIZED);
   END_HANDLE_TH_ERRORS
 }
@@ -326,8 +367,10 @@ static PyObject* THPVariable_make_subclass(PyObject* _ignored, PyObject* args, P
   if (!PyType_Check(cls)) {
     throw torch::TypeError("cls must be a type (got %s)", Py_TYPE(cls)->tp_name);
   }
-  auto data =
-      r.tensor(1).detach(); // creates a fresh Tensor (DEFINITELY_UNINITIALIZED)
+  // creates a fresh Tensor (DEFINITELY_UNINITIALIZED)
+  auto data = r.tensor(1).detach();
+  unsafe_clear_pyobj(data);
+
   // We set `data`'s `allow_tensor_metadata_change` to true here, because we want to
   // allow the following use case for backward compatibility:
   //

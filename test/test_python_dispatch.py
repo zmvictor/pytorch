@@ -344,10 +344,8 @@ $6 = torch._ops.aten.add_($1, $5)''')
             pass
 
         err_msg = "subclass Foo but.*already associated to a python object of type LoggingTensor"
-        with self.assertRaisesRegex(RuntimeError, err_msg):
-            a = torch.Tensor._make_subclass(Foo, LoggingTensor(torch.rand(2)))
-        with self.assertRaisesRegex(RuntimeError, err_msg):
-            b = LoggingTensor(torch.rand(2)).as_subclass(Foo)
+        a = torch.Tensor._make_subclass(Foo, LoggingTensor(torch.rand(2)))
+        b = LoggingTensor(torch.rand(2)).as_subclass(Foo)
 
         # And in case where we don't know if the user wants this subclass
         # overwritten, raise a nice error.
