@@ -3979,9 +3979,11 @@ for an efficient matrix-matrix multiplication.
 
 See `LAPACK documentation for geqrf`_ for further details.
 
-.. note::
-    See also :func:`torch.linalg.qr`, which computes Q and R matrices, and :func:`torch.linalg.lstsq`
-    with the ``driver="gels"`` option for a function that can solve matrix equations using a QR decomposition.
+.. seealso::
+
+        :func:`torch.linalg.qr`, which computes Q and R matrices.
+        :func:`torch.linalg.lstsq`with the ``driver="gels"`` option for a function
+        that can solve matrix equations using a QR decomposition.
 
 Args:
     input (Tensor): the input matrix
@@ -8531,8 +8533,9 @@ msort(input, *, out=None) -> Tensor
 Sorts the elements of the :attr:`input` tensor along its first dimension
 in ascending order by value.
 
-.. note:: `torch.msort(t)` is equivalent to `torch.sort(t, dim=0)[0]`.
-          See also :func:`torch.sort`.
+.. seealso::
+
+        :func:`torch.sort`; `torch.msort(t)` is equivalent to `torch.sort(t, dim=0)[0]`.
 
 Args:
     {input}
@@ -9450,9 +9453,9 @@ Selects values from :attr:`input` at the 1-dimensional indices from :attr:`indic
 Functions that return indices along a dimension, like :func:`torch.argmax` and :func:`torch.argsort`,
 are designed to work with this function. See the examples below.
 
-.. note::
-    This function is similar to NumPy's `take_along_axis`.
-    See also :func:`torch.gather`.
+.. seealso::
+        :func:`torch.gather` which performs the same operation but does not support broadcasting
+        and requires that the indices have the same number of dimensions as the input.
 
 Args:
     {input}
@@ -10388,11 +10391,8 @@ Example::
 .. function:: where(condition) -> tuple of LongTensor
    :noindex:
 
-``torch.where(condition)`` is identical to
-``torch.nonzero(condition, as_tuple=True)``.
-
-.. note::
-    See also :func:`torch.nonzero`.
+    A shorthand for ``torch.nonzero(condition, as_tuple=True)``. Prefer using ``torch.nonzero`` directly
+    for readability and performance.
 """)
 
 add_docstr(torch.logdet,
