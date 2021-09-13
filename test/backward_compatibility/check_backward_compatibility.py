@@ -47,6 +47,8 @@ ALLOW_LIST = [
     ("aten::adaptive_avg_pool3d_backward", datetime.date(9999, 1, 1)),
     ("aten::_embedding_bag_dense_backward", datetime.date(9999, 1, 1)),
     ("aten::randperm", datetime.date(9999, 1, 1)),
+    ("aten::quantile", datetime.date(2021, 9, 30)),
+    ("aten::nanquantile", datetime.date(2021, 9, 30)),
 ]
 
 ALLOW_LIST_COMPILED = [
