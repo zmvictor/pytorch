@@ -843,8 +843,8 @@ class TestUnion(JitTestCase):
 
         self._assert_raises(template, "Union[Dict[str, torch.Tensor], Dict[str, int]]",
                             lhs["dict_literal_of_mixed"],
-                            "none of those types can hold the types "
-                            "of the given dict elements")
+                            "none of those dict types can hold the "
+                            "types of the given keys and values")
 
         # TODO: String frontend does not support tuple unpacking
         # https://github.com/pytorch/pytorch/issues/64096
