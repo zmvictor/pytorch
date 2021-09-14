@@ -161,8 +161,8 @@ at::Tensor& to_copy_out(
   return out;
 }
 
-Tensor& linear_out(
-    Tensor& output,
+const Tensor& linear_out(
+    const Tensor& output,
     const Tensor& input,
     const Tensor& weight,
     const c10::optional<Tensor>& bias_opt) {

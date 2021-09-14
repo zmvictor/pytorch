@@ -67,7 +67,7 @@ inline Tensor multigammaln(const Tensor& self, int64_t p) {
   return torch::special_multigammaln(self, p);
 }
 
-inline Tensor& multigammaln_out(Tensor& result, const Tensor& self, int64_t p) {
+inline const Tensor& multigammaln_out(const Tensor& result, const Tensor& self, int64_t p) {
   return torch::special_multigammaln_out(result, self, p);
 }
 
@@ -415,7 +415,7 @@ inline Tensor ndtr(const Tensor& self) {
   return torch::special_ndtr(self);
 }
 
-inline Tensor& ndtr_out(Tensor& result, const Tensor& self) {
+inline const Tensor& ndtr_out(const Tensor& result, const Tensor& self) {
   return torch::special_ndtr_out(result, self);
 }
 

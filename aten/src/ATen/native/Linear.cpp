@@ -41,7 +41,7 @@ Tensor linear(const Tensor& input, const Tensor& weight, const c10::optional<Ten
   return output;
 }
 
-Tensor& linear_out(const Tensor& input, const Tensor& weight, const c10::optional<Tensor>& bias_opt, Tensor& output) {
+const Tensor& linear_out(const Tensor& input, const Tensor& weight, const c10::optional<Tensor>& bias_opt, const Tensor& output) {
   TORCH_CHECK(!input.is_mkldnn(), "linear doesn't support out for MKLDNN tensors");
   // See [Note: hacky wrapper removal for optional tensor]
   auto bias = bias_opt.has_value()
@@ -52,7 +52,7 @@ Tensor& linear_out(const Tensor& input, const Tensor& weight, const c10::optiona
     // Fused op is marginally faster.
     return at::addmm_out(output, *bias, input, weight.t());
   }
-  output = at::matmul_out(output, input, weight.t());
+  at::matmul_out(output, input, weight.t());
   if (bias->defined()) {
     output.add_(*bias);
   }

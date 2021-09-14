@@ -914,14 +914,14 @@ TensorIterator TensorIterator::binary_float_op(Tensor& out, const Tensor& a, con
   return iter;
 }
 
-TensorIterator TensorIterator::comparison_op(Tensor& out, const Tensor& a,
+TensorIterator TensorIterator::comparison_op(const Tensor& out, const Tensor& a,
     const Tensor& b) {
   TensorIterator iter;
   iter.build_comparison_op(out, a, b);
   return iter;
 }
 
-TensorIterator TensorIterator::unary_op(Tensor& out, const Tensor& a) {
+TensorIterator TensorIterator::unary_op(const Tensor& out, const Tensor& a) {
   TensorIterator iter;
   iter.build_unary_op(out, a);
   return iter;
