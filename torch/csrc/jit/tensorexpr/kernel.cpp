@@ -79,6 +79,23 @@ ExprHandle promoteToDtype(ExprHandle e, ScalarType dt) {
   return e;
 }
 
+static bool isValidIdentifierChar(char c, size_t pos) {
+  return islower(c) || isupper(c) || c == '_' || (pos > 0 && isdigit(c));
+}
+
+// replaces all invalid characters with underscore
+std::string sanitizeName(const std::string& input_name) {
+  std::stringstream sanitized_name;
+  for (size_t i = 0; i < input_name.size(); ++i) {
+    if (isValidIdentifierChar(input_name[i], i)) {
+      sanitized_name << input_name[i];
+    } else {
+      sanitized_name << "_";
+    }
+  }
+  return sanitized_name.str();
+}
+
 static int te_cuda_pointwise_loop_levels = -1;
 static int te_cuda_pointwise_block_count = -1;
 static int te_cuda_pointwise_block_size = -1;
@@ -2478,7 +2495,13 @@ Tensor TensorExprKernel::computeValue(const torch::jit::Value* v) {
   if (NNCLoweringFunction custom_lowering = getCustomLoweringFor(op)) {
     return custom_lowering(argInputs, outputShape, outputType, device_);
   }
-  return computeOperandValue(op, argInputs, outputShape, outputType, device_);
+  Tensor tensor =
+      computeOperandValue(op, argInputs, outputShape, outputType, device_);
+  std::string tensor_name = sanitizeName(v->debugName());
+  if (!tensor_name.empty()) {
+    tensor.buf()->set_name_hint(tensor_name);
+  }
+  return tensor;
 }
 
 // Return the (lower, upper) loop bounds if they are constants, else nullopt.
@@ -2809,23 +2832,6 @@ TensorExprKernel::BackendType TensorExprKernel::inferBackendTypeFromDevice(
     throw std::runtime_error("Invalid device type");
   }
   return backendType;
-}
-
-static bool isValidIdentifierChar(char c, size_t pos) {
-  return islower(c) || isupper(c) || c == '_' || (pos > 0 && isdigit(c));
-}
-
-// replaces all invalid characters with underscore
-std::string sanitizeName(const std::string& input_name) {
-  std::stringstream sanitized_name;
-  for (size_t i = 0; i < input_name.size(); ++i) {
-    if (isValidIdentifierChar(input_name[i], i)) {
-      sanitized_name << input_name[i];
-    } else {
-      sanitized_name << "_";
-    }
-  }
-  return sanitized_name.str();
 }
 
 // we use the debug names in printing cuda code, they need to be removed
