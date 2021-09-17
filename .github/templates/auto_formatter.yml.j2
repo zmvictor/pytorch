@@ -1,0 +1,35 @@
+{% import 'common.yml.j2' as common %}
+
+{%- block name -%}
+# Template is at:    .github/templates/auto_formatter.yml.j2
+# Generation script: .github/scripts/generate_ci_workflows.py
+name: !{{ build_environment }}
+{%- endblock %}
+
+name: autoformatter
+
+on:
+  schedule:
+    - cron: 0 4 * * SAT
+  workflow_dispatch:
+  pull_request:  # TODO: remove this before landing!
+
+concurrency:
+  group: periodic-auto-formatter-${{ github.event.pull_request.number || github.sha }}-${{ github.event_name == 'workflow_dispatch' }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-20.04
+    steps:
+      !{{ common.checkout_pytorch("false") }}
+      - name: Install Dependencies
+        run: |
+          pip install black==21.8b0
+      - name: Run black
+        run: |
+          black tools/testing/*
+      - name: Push results
+        run: |
+          git status
+          git diff
