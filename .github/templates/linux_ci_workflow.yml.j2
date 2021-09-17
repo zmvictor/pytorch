@@ -298,7 +298,7 @@ jobs:
           else
             TEST_COMMAND=.jenkins/pytorch/test.sh
           fi
-          if [[ $NUM_TEST_SHARDS -ne 2 ]]; then
+          if [[ $NUM_TEST_SHARDS -lt 2 ]]; then
             export SHARD_NUMBER=0
           fi
           # detached container should get cleaned up by teardown_ec2_linux

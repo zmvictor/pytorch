@@ -308,7 +308,7 @@ jobs:
       ENABLE_BACKWARDS_COMPAT_TEST: 1
       ENABLE_XLA_TEST: ''
       ENABLE_NOARCH_TEST: ''
-      NUM_TEST_SHARDS: 2
+      NUM_TEST_SHARDS: 6
       MULTIGPU_RUNNER_TYPE: linux.16xlarge.nvidia.gpu
       NOGPU_RUNNER_TYPE: linux.2xlarge
       PR_BODY: ${{ github.event.pull_request.body }}
@@ -429,7 +429,7 @@ jobs:
           else
             TEST_COMMAND=.jenkins/pytorch/test.sh
           fi
-          if [[ $NUM_TEST_SHARDS -ne 2 ]]; then
+          if [[ $NUM_TEST_SHARDS -lt 2 ]]; then
             export SHARD_NUMBER=0
           fi
           # detached container should get cleaned up by teardown_ec2_linux
