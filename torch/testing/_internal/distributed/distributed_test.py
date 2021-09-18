@@ -6365,7 +6365,7 @@ class DistributedTest:
             self._test_ddp_ignore_params_arg(static_graph=False)
             self._test_ddp_ignore_params_arg(static_graph=True)
 
-        @with_dist_debug_levels(levels=["OFF", "INFO", "DETAIL"])
+        @with_dist_debug_levels(levels=["DETAIL"])
         @require_backend({"gloo", "nccl"})
         @require_backends_available({"gloo", "nccl"})
         @skip_if_lt_x_gpu(2)
@@ -6379,6 +6379,23 @@ class DistributedTest:
                 def forward(self, x):
                     return self.net1(x)
 
+                # Destroy and re-init process group because we need to check
+                # that NCCL_BLOCKING_WAIT is properly set during PG
+                # construction.
+                dist.destroy_process_group()
+                timeout = timedelta(seconds=60)
+                dist.init_process_group(
+                    init_method=INIT_METHOD,
+                    backend=BACKEND,
+                    world_size=int(os.environ["WORLD_SIZE"]),
+                    rank=self.rank,
+                    timeout=timeout,
+                )
+
+            if dist._get_debug_mode() == dist._DistributedDebugLevel.DETAIL:
+                # NCCL_BLOCKING_WAIT should also be enabled.
+                nccl_blocking_wait = os.environ.get("NCCL_BLOCKING_WAIT", None)
+                self.assertEqual("1", nccl_blocking_wait)
             ddp = torch.nn.parallel.DistributedDataParallel(
                 ToyModel().cuda(self.rank), device_ids=[self.rank]
             )
