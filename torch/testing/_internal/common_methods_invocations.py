@@ -6367,8 +6367,6 @@ op_db: List[OpInfo] = [
            sample_inputs_func=sample_inputs_linalg_cholesky,
            gradcheck_wrapper=gradcheck_wrapper_hermitian_input,
            decorators=[skipCUDAIfNoMagma, skipCUDAIfRocm, skipCPUIfNoLapack],
-           # RuntimeError: torch.cholesky: U(1,1) is zero, singular U.
-           test_neg_view=False,
            skips=(
                # Gradcheck for complex generates invalid inputs for this function
                DecorateInfo(unittest.skip("Skipped!"), 'TestGradients', 'test_forward_mode_AD', dtypes=complex_types()),)),
@@ -7034,8 +7032,6 @@ op_db: List[OpInfo] = [
            sample_inputs_func=sample_inputs_linalg_cholesky,
            gradcheck_wrapper=gradcheck_wrapper_hermitian_input,
            decorators=[skipCUDAIfNoMagmaAndNoCusolver, skipCUDAIfRocm, skipCPUIfNoLapack],
-           # RuntimeError: torch.linalg.cholesky: U(1,1) is zero, singular U.
-           test_neg_view=False,
            skips=(
                # Gradcheck for complex generates invalid inputs for this function
                DecorateInfo(unittest.skip("Skipped!"), 'TestGradients', 'test_forward_mode_AD', dtypes=complex_types()),),
@@ -7836,6 +7832,8 @@ op_db: List[OpInfo] = [
            # gradcheck test verifies the formula for input in SampleInput,
            # we permute the arguments.
            op=lambda self, other, **kwargs: torch.igamma(other, self, **kwargs),
+           inplace_variant=None,
+           method_variant=None,
            dtypes=floating_types_and(torch.bfloat16, torch.float16),
            backward_dtypesIfCPU=floating_types_and(torch.bfloat16),
            dtypesIfCUDA=floating_types(),
@@ -7861,6 +7859,8 @@ op_db: List[OpInfo] = [
            # gradcheck test verifies the formula for input in SampleInput,
            # we permute the arguments
            op=lambda self, other, **kwargs: torch.igammac(other, self, **kwargs),
+           inplace_variant=None,
+           method_variant=None,
            dtypes=floating_types_and(torch.bfloat16, torch.float16),
            backward_dtypesIfCPU=floating_types_and(torch.bfloat16),
            dtypesIfCUDA=floating_types(),
