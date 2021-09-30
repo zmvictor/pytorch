@@ -17,8 +17,8 @@ std::string fastToString(size_t x) {
   return "_" + c10::guts::to_string(x);
 }
 
-std::vector<Argument> createArgumentVector(c10::ArrayRef<ArgumentDef> args) {
-  std::vector<Argument> result;
+ArgumentVector createArgumentVector(c10::ArrayRef<ArgumentDef> args) {
+  ArgumentVector result;
   result.reserve(args.size());
   for (size_t i = 0; i < args.size(); ++i) {
     // Arguments are named "_<index>"
