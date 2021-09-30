@@ -7,7 +7,3 @@ import torch
 class FooSameName(object):  # noqa: B903
     def __init__(self, y):
         self.y = y
-
-
-def f(x):
-    return x
