@@ -187,4 +187,33 @@ class LeftRight final {
   std::mutex _writeMutex;
 };
 
+// LeftRightNoOpWrapper is a pass-through (just to maintain API
+// compatibility with the non-mobile build).
+template <class T>
+class LeftRightNoOpWrapper final {
+ public:
+  template <class... Args>
+  explicit LeftRightNoOpWrapper(const Args&... args) : _data{args...} {}
+
+  // LeftRightNoOpWrapper is not copyable or moveable since LeftRight
+  // is not copyable or moveable.
+  LeftRightNoOpWrapper(const LeftRightNoOpWrapper&) = delete;
+  LeftRightNoOpWrapper(LeftRightNoOpWrapper&&) noexcept = delete;
+  LeftRightNoOpWrapper& operator=(const LeftRightNoOpWrapper&) = delete;
+  LeftRightNoOpWrapper& operator=(LeftRightNoOpWrapper&&) noexcept = delete;
+
+  template <typename F>
+  auto read(F&& readFunc) const -> typename std::result_of<F(const T&)>::type {
+    return readFunc(_data);
+  }
+
+  template <typename F>
+  auto write(F&& writeFunc) -> typename std::result_of<F(T&)>::type {
+    return writeFunc(_data);
+  }
+
+ private:
+  T _data;
+};
+
 } // namespace c10
