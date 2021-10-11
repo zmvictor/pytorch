@@ -222,8 +222,10 @@ jobs:
           unzip -o artifacts.zip
       - name: Output disk space left
         run: |
+          set -eux
           sudo df -H
       !{{ common.parse_ref() }}
+      !{{ common.fetch_diff(name='linux') }}
       - name: Test
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}

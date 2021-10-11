@@ -202,6 +202,7 @@ jobs:
         name: Setup Python3
         with:
           python-version: '3.x'
+      !{{ common.fetch_diff(name='windows') }}
       - name: Test
         shell: bash
         env:
