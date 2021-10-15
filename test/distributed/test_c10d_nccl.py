@@ -2199,6 +2199,12 @@ class NcclErrorHandlingTest(MultiProcessTestCase):
             self.test_nccl_errors_blocking_sigterm.__wrapped__,
             self.test_nccl_errors_blocking_nonzero_exit.__wrapped__,
         ]
+
+        # Used a shared barrier to synchronize between different processes
+        self.shared_data = {
+            "barrier": self.mp_manager.Barrier(self.world_size)
+        }
+
         # NCCL_BLOCKING_WAIT overrides NCCL_ASYNC_ERROR_HANDLING hence tests
         # that use NCCL_BLOCKING_WAIT will test it as expected.
         os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
@@ -2394,11 +2400,12 @@ class NcclErrorHandlingTest(MultiProcessTestCase):
             # This should timeout in about 1 second.
             # Watchdog may abort timed out work resulting in NCCL error instead of operation timed out.
             with self.assertRaisesRegex(RuntimeError, self.blocking_wait_error_msg):
-                process_group.allreduce(torch.rand(10).cuda(self.rank)).wait(timeout=timedelta(seconds=1))
+                process_group.allreduce(torch.rand(10).cuda(self.rank)).wait()
+            self.barrier.wait()
         else:
-            # Sleep to ensure timeout.
-            time.sleep(10)
-
+            # Wait for other process to timeout after allreduce call
+            self.barrier.wait()
+            # Verify that communication is aborted
             self._wait_for_comm_abort(process_group)
 
 
