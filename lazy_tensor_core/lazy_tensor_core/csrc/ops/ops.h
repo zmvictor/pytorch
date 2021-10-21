@@ -160,9 +160,6 @@ NodePtr ComparisonOp(c10::Symbol kind, const torch::lazy::Value& input, const to
 
 NodePtr Where(const torch::lazy::Value& condition, const torch::lazy::Value& input, const torch::lazy::Value& other);
 
-NodePtr ARange(const at::Scalar& start, const at::Scalar& end,
-               const at::Scalar& step, at::ScalarType scalar_type);
-
 NodePtr BroadcastTensors(OpList tensors);
 
 NodePtr Identity(lazy_tensors::int64 lines, lazy_tensors::int64 cols,

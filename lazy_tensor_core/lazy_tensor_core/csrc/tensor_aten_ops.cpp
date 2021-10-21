@@ -473,12 +473,6 @@ LazyTensor any(const LazyTensor& input,
       result_type);
 }
 
-void arange_out(LazyTensor& out, const at::Scalar& start, const at::Scalar& end,
-                const at::Scalar& step, at::ScalarType scalar_type) {
-  out.SetIrValue(ir::ops::ARange(start, end, step, scalar_type));
-  out.SetScalarType(scalar_type);
-}
-
 LazyTensor argmax(const LazyTensor& input, lazy_tensors::int64 dim,
                   bool keepdim) {
   lazy_tensors::int64 canonical_dim =

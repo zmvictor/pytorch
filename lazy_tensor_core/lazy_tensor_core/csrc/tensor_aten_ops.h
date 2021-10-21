@@ -71,9 +71,6 @@ LazyTensor any(const LazyTensor& input,
                std::vector<lazy_tensors::int64> dimensions,
                bool keep_reduced_dimensions);
 
-void arange_out(LazyTensor& out, const at::Scalar& start, const at::Scalar& end,
-                const at::Scalar& step, at::ScalarType scalar_type);
-
 LazyTensor argmax(const LazyTensor& input, lazy_tensors::int64 dim,
                   bool keepdim);
 LazyTensor argmax(const LazyTensor& input);
