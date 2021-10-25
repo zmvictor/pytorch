@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.intrinsic as nni
 import torch.nn.intrinsic.quantized as nniq
 import torch.nn.quantized as nnq
-import torch.nn.quantized.dynamic as nnqd
+import torch.ao.nn.quantization.quantized.dynamic as nnqd
 import torch.ao.quantization
 
 from torch.ao.quantization import (
@@ -898,7 +898,7 @@ class TestDynamicQuantizedModule(QuantizationTestCase):
     )
     @override_qengines
     def test_linear_api(self, batch_size, in_features, out_features, use_bias, use_default_observer):
-        """test API functionality for nn.quantized.dynamic.Linear"""
+        """test API functionality for ao.nn.quantization.quantized.dynamic.Linear"""
         W = torch.rand(out_features, in_features).float()
         W_scale, W_zp = _calculate_dynamic_qparams(W, torch.qint8)
         W_q = torch.quantize_per_tensor(W, W_scale, W_zp, torch.qint8)
@@ -1016,22 +1016,22 @@ class TestDynamicQuantizedModule(QuantizationTestCase):
             x = torch.randn(seq_len, batch, input_size)
             h = torch.randn(num_layers * (bidirectional + 1), batch, hidden_size)
             c = torch.randn(num_layers * (bidirectional + 1), batch, hidden_size)
-            cell_dq = torch.nn.quantized.dynamic.LSTM(input_size=input_size,
-                                                      hidden_size=hidden_size,
-                                                      num_layers=num_layers,
-                                                      bias=bias,
-                                                      batch_first=False,
-                                                      dropout=0.0,
-                                                      bidirectional=bidirectional,
-                                                      dtype=dtype)
-            ref_dq = torch.nn.quantized.dynamic.LSTM(input_size=input_size,
-                                                     hidden_size=hidden_size,
-                                                     num_layers=num_layers,
-                                                     bias=bias,
-                                                     batch_first=False,
-                                                     dropout=0.0,
-                                                     bidirectional=bidirectional,
-                                                     dtype=dtype)
+            cell_dq = torch.ao.nn.quantization.quantized.dynamic.LSTM(input_size=input_size,
+                                                                      hidden_size=hidden_size,
+                                                                      num_layers=num_layers,
+                                                                      bias=bias,
+                                                                      batch_first=False,
+                                                                      dropout=0.0,
+                                                                      bidirectional=bidirectional,
+                                                                      dtype=dtype)
+            ref_dq = torch.ao.nn.quantization.quantized.dynamic.LSTM(input_size=input_size,
+                                                                     hidden_size=hidden_size,
+                                                                     num_layers=num_layers,
+                                                                     bias=bias,
+                                                                     batch_first=False,
+                                                                     dropout=0.0,
+                                                                     bidirectional=bidirectional,
+                                                                     dtype=dtype)
 
             _all_params = ([m.param for m in cell_dq._all_weight_values])
             result = torch.quantized_lstm(x, (h, c),
@@ -1078,14 +1078,14 @@ class TestDynamicQuantizedModule(QuantizationTestCase):
             h = torch.rand(num_layers * (bidirectional + 1), batch, hidden_size)
 
 
-            cell_dq = torch.nn.quantized.dynamic.GRU(input_size=input_size,
-                                                     hidden_size=hidden_size,
-                                                     num_layers=num_layers,
-                                                     bias=bias,
-                                                     batch_first=False,
-                                                     dropout=0.0,
-                                                     bidirectional=bidirectional,
-                                                     dtype=dtype)
+            cell_dq = torch.ao.nn.quantization.quantized.dynamic.GRU(input_size=input_size,
+                                                                     hidden_size=hidden_size,
+                                                                     num_layers=num_layers,
+                                                                     bias=bias,
+                                                                     batch_first=False,
+                                                                     dropout=0.0,
+                                                                     bidirectional=bidirectional,
+                                                                     dtype=dtype)
 
             _all_params = ([m.param for m in cell_dq._all_weight_values])
             result = torch.quantized_gru(x,
@@ -1119,10 +1119,10 @@ class TestDynamicQuantizedModule(QuantizationTestCase):
 
         x = torch.rand(batch, input_size)
         h = torch.rand(batch, hidden_size)
-        cell_dict = {'LSTMCell': torch.nn.quantized.dynamic.LSTMCell,
-                     'GRUCell': torch.nn.quantized.dynamic.GRUCell,
-                     'RNNTanh': torch.nn.quantized.dynamic.RNNCell,
-                     'RNNReLU': torch.nn.quantized.dynamic.RNNCell
+        cell_dict = {'LSTMCell': torch.ao.nn.quantization.quantized.dynamic.LSTMCell,
+                     'GRUCell': torch.ao.nn.quantization.quantized.dynamic.GRUCell,
+                     'RNNTanh': torch.ao.nn.quantization.quantized.dynamic.RNNCell,
+                     'RNNReLU': torch.ao.nn.quantization.quantized.dynamic.RNNCell
                      }
         state = {'LSTMCell': (h, h),
                  'GRUCell': h,
