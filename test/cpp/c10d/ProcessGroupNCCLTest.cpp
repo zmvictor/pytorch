@@ -663,7 +663,7 @@ TEST_F(ProcessGroupNCCLTest, testReduceScatter) {
   }
 }
 
-TEST_F(ProcessGroupNCCLTest, testSequenceNumInit) {
+TEST_F(ProcessGroupNCCLTest, DISABLED_testSequenceNumInit) {
   if (skipTest()) {
     return;
   }
