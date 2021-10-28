@@ -2,6 +2,7 @@
 
 #include <ATen/ATen.h>
 #include <ATen/native/ResizeCommon.h>
+#include <ATen/native/Resize.h>
 
 #include <c10/cuda/CUDAGuard.h>
 
@@ -35,27 +36,12 @@ inline TensorImpl* resize_impl_cuda_(
     IntArrayRef size,
     c10::optional<IntArrayRef> stride,
     bool device_guard = true) {
-  if (self->sizes() == size && (!stride || self->strides() == stride)) {
-    return self;
-  }
-
-  // NB: We don't need to hold the device guard when calling from TH
   cuda::OptionalCUDAGuard guard;
   if (device_guard) {
     guard.set_index(self->storage().device().index());
   }
-
-  int64_t storage_size = 1;
-  if (stride) {
-    self->set_sizes_and_strides(size, *stride);
-    // NB: storage size can be different from numel.
-    storage_size = storage_size_for(size, *stride);
-  } else {
-    self->set_sizes_contiguous(size);
-    storage_size = self->numel();
-  }
-  maybe_resize_storage_cuda(self, storage_size);
-
+  resize_impl_template_<&maybe_resize_storage_cuda, &compute_storage_size_default>(
+      self, size, stride);
   return self;
 }
 
