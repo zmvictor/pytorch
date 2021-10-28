@@ -1,7 +1,5 @@
 #pragma once
 
-#include <c10/util/irange.h>
-
 #include <ATen/ATen.h>
 #include <ATen/core/List.h>
 #include <ATen/native/quantized/cpu/fbgemm_utils.h>
