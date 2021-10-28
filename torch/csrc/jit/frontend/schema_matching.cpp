@@ -1,10 +1,13 @@
 #include <torch/csrc/jit/frontend/schema_matching.h>
+#include "jit/frontend/function_schema_parser.h"
 
 #include <ATen/core/jit_type.h>
 #include <c10/util/irange.h>
 #include <torch/csrc/jit/frontend/builtin_functions.h>
 #include <torch/csrc/jit/frontend/error_report.h>
 #include <torch/csrc/jit/runtime/operator.h>
+#include <torch/csrc/jit/operator_upgraders/version_map.h>
+#include <torch/csrc/jit/operator_upgraders/utils.h>
 
 namespace torch {
 namespace jit {
@@ -612,7 +615,8 @@ Value* emitBuiltinCall(
     Symbol name,
     at::ArrayRef<NamedValue> args,
     at::ArrayRef<NamedValue> kwargs,
-    const c10::optional<NamedValue>& self) {
+    const c10::optional<NamedValue>& self,
+    const c10::optional<int64_t> version) {
   const auto& variants = getAllOperatorsFor(name);
   const auto& builtin_functions = getAllBuiltinFunctionsFor(name);
 
@@ -620,8 +624,21 @@ Value* emitBuiltinCall(
   std::vector<const FunctionSchema*> schemas;
   schemas.reserve(variants.size());
   for (const std::shared_ptr<Operator>& op : variants) {
-    schemas.push_back(&op->schema());
+    auto op_name = op->schema().operator_name().name + "." + op->schema().overload_name();
+    if (version.has_value()) {
+      auto version_entry = operator_version_map.find(op_name);
+      if (version_entry != operator_version_map.end()) {
+        auto old_schema_entry = findUpgrader(version_entry->second, version.value());
+        std::cout << "HI: " << old_schema_entry.old_schema << std::endl;
+        auto old_schema = parseSchema(old_schema_entry.old_schema);
+        std::cout << "HO\n";
+        schemas.push_back(&old_schema);
+      }
+    } else {
+      schemas.push_back(&op->schema());
+    }
   }
+
   for (const auto method : builtin_functions) {
     method->ensure_defined();
     schemas.push_back(&method->getSchema());
