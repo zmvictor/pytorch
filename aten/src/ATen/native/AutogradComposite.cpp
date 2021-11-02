@@ -22,6 +22,30 @@ std::tuple<at::Tensor, at::Tensor> _unpack_dual(const at::Tensor& tensor, int64_
   return std::tuple<at::Tensor, at::Tensor>(tensor._fw_primal(level), tensor._fw_grad(level));
 }
 
+// See NOTE [Two New-zero Functions]
+Tensor _new_zeros_with_meta(
+    const at::Tensor& self,
+    IntArrayRef sizes,
+    IntArrayRef strides,
+    int64_t storage_offset,
+    int64_t storage_numel) {
+  // We need to create a storage of the same size to be able to have the same
+  // viewing behavior in all cases
+  auto new_tensor = at::zeros({storage_numel}, self.options());
+  return new_tensor.as_strided(sizes, strides, storage_offset);
+}
+
+Tensor _new_zeros_with_same_meta(
+    const at::Tensor& self,
+    const at::Tensor& other) {
+  auto sizes = other.sizes();
+  auto strides = other.strides();
+  auto storage_offset = other.storage_offset();
+  // Explicit type to appease window build
+  int64_t storage_numel = other.storage().nbytes() / other.itemsize();
+  return at::_new_zeros_with_meta(self, sizes, strides, storage_offset, storage_numel);
+}
+
 } // namespace native
 
 } // namespace at
