@@ -64,6 +64,7 @@ ALLOW_LIST = [
     ("caffe2::", datetime.date(2021, 10, 23)),
     ("prepacked::unpack_prepacked_sizes_conv2d", datetime.date(9999, 1, 1)),
     ("prepacked::unpack_prepacked_sizes_linear", datetime.date(9999, 1, 1)),
+    ("aten::hardtanh", datetime.date(2021, 12, 1)),
 ]
 
 ALLOW_LIST_COMPILED = [
