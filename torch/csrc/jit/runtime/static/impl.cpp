@@ -729,7 +729,7 @@ StaticModule::StaticModule(
     if (node->kind() == prim::Constant) {
       continue;
     }
-    auto input_indices = std::make_unique<uint16_t[]>(node->inputs().size());
+    ProcessedNodeInputs input_indices(node->inputs().size());
     std::vector<DefInfo> input_ssa_defs;
     for (const auto input_idx : c10::irange(node->inputs().size())) {
       Value *const input  = node->inputs()[input_idx];
@@ -757,7 +757,7 @@ StaticModule::StaticModule(
       input_indices[input_idx] = input_ivalue_idx;
     }
 
-    nodes_.emplace_back(node, std::move(input_indices), node->inputs().size(), node_output_idx_map[node_idx], opts.enable_out_variant);
+    nodes_.emplace_back(node, std::move(input_indices), node_output_idx_map[node_idx], opts.enable_out_variant);
     node_has_out_variant.emplace(node, nodes_.back().has_out_variant());
     for (const auto i : c10::irange(node->outputs().size())) {
       value_to_ssa_def[node->outputs()[i]] = std::make_pair(node_idx, i);
@@ -1511,13 +1511,11 @@ bool StaticRuntime::isManagedOutputTensor(const IValue& ivalue) {
 
 ProcessedNode::ProcessedNode(
     Node* node,
-    std::unique_ptr<uint16_t[]> inputs,
-    uint16_t inputs_size,
+    ProcessedNodeInputs inputs,
     uint16_t outputs_offset,
     bool enable_out_variant)
     : node_(node),
       inputs_(std::move(inputs)),
-      inputs_size_(inputs_size),
       outputs_offset_(outputs_offset)
 #ifndef PYTORCH_DISABLE_PER_OP_PROFILING
       ,
@@ -1578,7 +1576,7 @@ ProcessedNode::ProcessedNode(
 
 std::vector<IValue> ProcessedNode::clone_inputs() const {
   std::vector<IValue> result;
-  result.reserve(inputs_size_);
+  result.reserve(inputs_.size());
   for (const auto idx : c10::irange(num_inputs())) {
     result.emplace_back(Input(idx));
   }
@@ -1653,7 +1651,7 @@ bool ProcessedNode::verify_inputs_dont_overlap_outputs() const {
   if (!schema || (schema->is_mutable() && num_outputs_ == 1)) {
     return true;
   }
-  for (const auto i : c10::irange(inputs_size_)) {
+  for (const auto i : c10::irange(inputs_.size())) {
     const IValue* in = &Input(i);
     if (!in->isTensor()) {
       continue;
