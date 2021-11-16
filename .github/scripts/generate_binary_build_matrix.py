@@ -11,17 +11,16 @@ architectures:
 """
 
 import argparse
+import os
 import json
 from typing import Dict, List
 
-CUDA_ARCHES = [
-    "10.2",
-    "11.1"
-]
+CUDA_ARCHES = ["10.2", "11.1", "11.3"]
 
 ROCM_ARCHES = [
-    "3.10",
-    "4.0"
+    "4.1",
+    "4.2",
+    "4.3.1",
 ]
 
 
@@ -36,38 +35,31 @@ def arch_type(arch_version: str) -> str:
 
 WHEEL_CONTAINER_IMAGES = {
     **{
-        # TODO: Re-do manylinux CUDA image tagging scheme to be similar to
-        #       ROCM so we don't have to do this replacement
-        gpu_arch: f"pytorch/manylinux-cuda{gpu_arch.replace('.', '')}"
+        gpu_arch: f"pytorch/manylinux-builder:cuda{gpu_arch}"
         for gpu_arch in CUDA_ARCHES
     },
     **{
-        gpu_arch: f"pytorch/manylinux-rocm:{gpu_arch}"
+        gpu_arch: f"pytorch/manylinux-builder:rocm{gpu_arch}"
         for gpu_arch in ROCM_ARCHES
     },
-    "cpu": "pytorch/manylinux-cpu"
+    "cpu": "pytorch/manylinux-builder:cpu",
 }
 
 CONDA_CONTAINER_IMAGES = {
-    **{
-        gpu_arch: f"pytorch/conda-builder:cuda{gpu_arch}"
-        for gpu_arch in CUDA_ARCHES
-    },
-    "cpu": "pytorch/conda-builder:cpu"
+    **{gpu_arch: f"pytorch/conda-builder:cuda{gpu_arch}" for gpu_arch in CUDA_ARCHES},
+    "cpu": "pytorch/conda-builder:cpu",
 }
 
 LIBTORCH_CONTAINER_IMAGES = {
     **{
-        # TODO: Re-do manylinux CUDA image tagging scheme to be similar to
-        #       ROCM so we don't have to do this replacement
-        (gpu_arch, "pre-cxx11"): f"pytorch/manylinux-cuda{gpu_arch.replace('.', '')}"
+        (gpu_arch, "pre-cxx11"): f"pytorch/manylinux-builder:cuda{gpu_arch}"
         for gpu_arch in CUDA_ARCHES
     },
     **{
         (gpu_arch, "cxx11-abi"): f"pytorch/libtorch-cxx11-builder:cuda{gpu_arch}"
         for gpu_arch in CUDA_ARCHES
     },
-    ("cpu", "pre-cxx11"): "pytorch/manylinux-cpu",
+    ("cpu", "pre-cxx11"): "pytorch/manylinux-builder:cpu",
     ("cpu", "cxx11-abi"): "pytorch/libtorch-cxx11-builder:cpu",
 }
 
@@ -80,8 +72,7 @@ FULL_PYTHON_VERSIONS = [
 
 
 def is_pull_request() -> bool:
-    return False
-    # return os.environ.get("GITHUB_HEAD_REF")
+    return os.environ.get("GITHUB_HEAD_REF", None) != ""
 
 
 def snip_if(is_pr: bool, versions: List[str]) -> List[str]:
@@ -122,7 +113,7 @@ def generate_libtorch_matrix(is_pr: bool) -> List[Dict[str, str]]:
         }
         # We don't currently build libtorch for rocm
         for arch_version in ["cpu"] + snip_if(is_pr, CUDA_ARCHES)
-        for libtorch_variant in libtorch_variants
+        for libtorch_variant in snip_if(is_pr, libtorch_variants)
         # one of the values in the following list must be exactly
         # "cxx11-abi", but the precise value of the other one doesn't
         # matter
@@ -151,16 +142,17 @@ def from_includes(includes: List[Dict[str, str]]) -> str:
 
 
 def main() -> None:
+    modes = {
+        "conda": generate_conda_matrix,
+        "libtorch": generate_libtorch_matrix,
+        "wheels": generate_wheels_matrix,
+    }
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['conda', 'libtorch', 'wheels'])
+    parser.add_argument("mode", choices=modes.keys())
     args = parser.parse_args()
 
     is_pr = is_pull_request()
-    print(from_includes({
-        'conda': generate_conda_matrix,
-        'libtorch': generate_libtorch_matrix,
-        'wheels': generate_wheels_matrix,
-    }[args.mode](is_pr)))
+    print(from_includes(modes[args.mode](is_pr)))
 
 
 if __name__ == "__main__":
