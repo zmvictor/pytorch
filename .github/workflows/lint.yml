@@ -7,6 +7,62 @@ on:
   pull_request:
 
 jobs:
+  lintrunner-shadow:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+          architecture: x64
+      - name: Checkout PyTorch
+        uses: zhouzhuojie/checkout@05b13c9a0d21f08f6d5e64a1d5042246d13619d9
+      - name: Install lintrunner
+        run: cargo install lintrunner --version=~0.5
+      - name: Initialize lint dependencies
+        run: lintrunner init
+      - name: Do build steps necessary for linters
+        run: |
+          set -eux
+          python3 -m tools.linter.clang_tidy.generate_build_files
+          python3 -m tools.generate_torch_version --is_debug=false
+          python3 -m tools.codegen.gen -s aten/src/ATen -d build/aten/src/ATen
+
+          # TODO lint_paths.txt is unnecessarily complicated. We need it for now
+          # because generated .pyi files are .gitignored. In the future it would
+          # be simpler to just commit them to the repo and have a lint to tell
+          # us that they are in sync, to avoid having a generation step at all.
+
+          python3 -m tools.pyi.gen_pyi \
+            --native-functions-path aten/src/ATen/native/native_functions.yaml \
+            --deprecated-functions-path "tools/autograd/deprecated.yaml" \
+            --print-files \
+            >> lint_paths.txt
+
+          git grep -Il . >> lint_paths.txt
+      - name: Run lintrunner
+        run: lintrunner -vv
+      - name: Store annotations
+        if: ${{ failure() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository}}
+        run: |
+          lintrunner --json \
+            | python .github/scripts/convert_lintrunner_annotations_to_github.py \
+            > annotations.json
+
+          cat annotations.json
+      - name: Add annotations
+        # Don't run on forked pull requests
+        if: ${{ failure() && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: pytorch/add-annotations-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          check_name: 'lintrunner-shadow'
+          linter_output_path: annotations.json
+          commit_sha: ${{ github.event.pull_request.head.sha }}
+          mode: json
+
+
   quick-checks:
     runs-on: ubuntu-18.04
     steps:
