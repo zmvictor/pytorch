@@ -99,6 +99,7 @@ Indexing, Slicing, Joining, Mutating Ops
     gather
     hsplit
     hstack
+    index_add
     index_select
     masked_select
     movedim
