@@ -40,6 +40,8 @@ class CuSparseDescriptor {
 #if defined(USE_ROCM)
 // hipSPARSE doesn't define this
 using cusparseMatDescr = std::remove_pointer<cusparseMatDescr_t>::type;
+using bsrsv2Info = std::remove_pointer<bsrsv2Info_t>::type;
+using bsrsm2Info = std::remove_pointer<bsrsm2Info_t>::type;
 #endif
 
 class TORCH_CUDA_CPP_API CuSparseMatDescriptor
@@ -48,6 +50,38 @@ class TORCH_CUDA_CPP_API CuSparseMatDescriptor
   CuSparseMatDescriptor() {
     cusparseMatDescr_t raw_descriptor;
     TORCH_CUDASPARSE_CHECK(cusparseCreateMatDescr(&raw_descriptor));
+    descriptor_.reset(raw_descriptor);
+  }
+
+  CuSparseMatDescriptor(bool upper, bool unit) {
+    cusparseFillMode_t fill_mode =
+        upper ? CUSPARSE_FILL_MODE_UPPER : CUSPARSE_FILL_MODE_LOWER;
+    cusparseDiagType_t diag_type =
+        unit ? CUSPARSE_DIAG_TYPE_UNIT : CUSPARSE_DIAG_TYPE_NON_UNIT;
+    cusparseMatDescr_t raw_descriptor;
+    TORCH_CUDASPARSE_CHECK(cusparseCreateMatDescr(&raw_descriptor));
+    TORCH_CUDASPARSE_CHECK(cusparseSetMatFillMode(raw_descriptor, fill_mode));
+    TORCH_CUDASPARSE_CHECK(cusparseSetMatDiagType(raw_descriptor, diag_type));
+    descriptor_.reset(raw_descriptor);
+  }
+};
+
+class TORCH_CUDA_CPP_API CuSparseBsrsv2Info
+    : public CuSparseDescriptor<bsrsv2Info, &cusparseDestroyBsrsv2Info> {
+ public:
+  CuSparseBsrsv2Info() {
+    bsrsv2Info_t raw_descriptor;
+    TORCH_CUDASPARSE_CHECK(cusparseCreateBsrsv2Info(&raw_descriptor));
+    descriptor_.reset(raw_descriptor);
+  }
+};
+
+class TORCH_CUDA_CPP_API CuSparseBsrsm2Info
+    : public CuSparseDescriptor<bsrsm2Info, &cusparseDestroyBsrsm2Info> {
+ public:
+  CuSparseBsrsm2Info() {
+    bsrsm2Info_t raw_descriptor;
+    TORCH_CUDASPARSE_CHECK(cusparseCreateBsrsm2Info(&raw_descriptor));
     descriptor_.reset(raw_descriptor);
   }
 };
