@@ -578,7 +578,9 @@ void SourceImporterImpl::importClass(
       /*propResolvers=*/{},
       methods,
       method_resolvers,
-      &self);
+      &self,
+      false,
+      version_);
   cu_->define_hooks(
       qualified_classname,
       hooks,
