@@ -1,8 +1,11 @@
 #include <torch/csrc/jit/tensorexpr/graph_opt.h>
 
 #include <torch/csrc/jit/jit_log.h>
+#include <torch/csrc/jit/jit_opt_limit.h>
 #include <torch/csrc/jit/passes/tensorexpr_fuser.h>
 #include <torch/csrc/jit/tensorexpr/kernel.h>
+
+#include <torch/csrc/jit/passes/dead_code_elimination.h>
 
 namespace torch {
 namespace jit {
@@ -415,6 +418,67 @@ std::shared_ptr<Graph> replaceListOutputWithTuple(
   auto tuple_node = graph->createTuple(out_node->inputs());
   tuple_node->insertAfter(out_node);
   out->replaceAllUsesWith(tuple_node->output());
+  return graph;
+}
+
+bool tryTrimmingGraph(const std::shared_ptr<Graph>& graph) {
+  Node* ret = graph->return_node();
+  std::unordered_set<Value*> graph_inputs(
+      graph->inputs().begin(), graph->inputs().end());
+  std::unordered_set<Value*> outputs(
+      graph->outputs().begin(), graph->outputs().end());
+  bool changed = false;
+  for (int idx = 0; idx < ret->inputs().size(); idx++) {
+    auto v = ret->inputs()[idx];
+    if (graph_inputs.count(v))
+      continue;
+
+    graph->eraseOutput(idx);
+    for (auto v_ins : v->node()->inputs()) {
+      if (outputs.count(v_ins))
+        continue;
+      if (v_ins->node()->kind() == prim::Constant)
+        continue;
+
+      graph->registerOutput(v_ins);
+    }
+    changed = true;
+    break;
+  }
+  return changed;
+}
+
+std::shared_ptr<Graph> dequantizeResults(const std::shared_ptr<Graph>& graph) {
+  for (auto v : graph->outputs()) {
+    auto& t = v->type();
+    if (t->kind() == TypeKind::TensorType) {
+      auto tt = t->cast<TensorType>();
+      if (!tt->scalarType() || !c10::isQIntType(*tt->scalarType())) {
+        continue;
+      }
+      std::cerr << "NODE: " << *v->node() << "\n";
+      std::cerr << "TYPE: " << *tt << "\n";
+      Node* deq =
+          graph->create(c10::Symbol::fromQualString("aten::dequantize"), {v});
+      graph->appendNode(deq);
+      deq->output()->setType(tt->withScalarType(c10::kFloat));
+      v->replaceAllUsesAfterNodeWith(deq, deq->output());
+    }
+  }
+  return graph;
+}
+
+std::shared_ptr<Graph> trimGraph(const std::shared_ptr<Graph>& graph) {
+  bool changed = true;
+  int max_iters = 1000;
+  int iter = 0;
+  while (changed && iter++ < max_iters) {
+    if (!JIT_OPT_ALLOWED)
+      break;
+    changed = tryTrimmingGraph(graph);
+    EliminateDeadCode(graph->block());
+  }
+  dequantizeResults(graph);
   return graph;
 }
 

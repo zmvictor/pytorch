@@ -68,6 +68,7 @@ TORCH_API std::shared_ptr<Graph> removeGraphOutput(
     size_t idx);
 TORCH_API std::shared_ptr<Graph> replaceListOutputWithTuple(
     const std::shared_ptr<Graph>& graph);
+TORCH_API std::shared_ptr<Graph> trimGraph(const std::shared_ptr<Graph>& graph);
 
 TORCH_API std::vector<int64_t> makeShapesSymbolic(
     std::shared_ptr<Graph>& graph,
