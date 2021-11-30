@@ -354,7 +354,11 @@ class Checkpoint(torch.nn.Module):
                     #  detached_inputs = detach_variable(tuple(inputs))
                     with torch.enable_grad(), torch.cuda.amp.autocast(self.had_autocast_in_fwd):
                         with torch.autograd.graph.saved_tensors_hooks(inner_pack, inner_unpack):
+                            if isinstance(self.function, torch.nn.Module):
+                                self.function._recomputing = True
                             _unused = self.function(*args)
+                            if isinstance(self.function, torch.nn.Module):
+                                self.function._recomputing = False
 
             return storage[x]
 
