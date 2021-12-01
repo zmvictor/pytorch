@@ -68,6 +68,7 @@ TORCH_API std::shared_ptr<Graph> removeGraphOutput(
     size_t idx);
 TORCH_API std::shared_ptr<Graph> replaceListOutputWithTuple(
     const std::shared_ptr<Graph>& graph);
+TORCH_API std::shared_ptr<Graph> trimGraph(const std::shared_ptr<Graph>& graph);
 
 // Scan all values in the given graph and replace each dimension with a size Xi
 // present in \p SIZES with a symbolic shape Yi. Return a vector of symbol
