@@ -7739,6 +7739,7 @@ def reference_smooth_l1_loss(input, target, beta=1.0):
 
     return loss
 
+
 def reference_pdist(input, p=2):
     pdist = scipy.spatial.distance.pdist
     if p == 0:
@@ -7748,7 +7749,6 @@ def reference_pdist(input, p=2):
     else:
         output = pdist(input, "minkowski", p=p)
     return output.astype(input.dtype)
-
 
 
 def wrapper_set_seed(op, input, *args, **kwargs):
@@ -14003,27 +14003,13 @@ op_db: List[OpInfo] = [
         ref=loss_reference_reduction_wrapper(lambda input, target: np.abs(input - target)),
         sample_inputs_func=sample_inputs_l1_loss,
         dtypes=floating_and_complex_types_and(torch.float16, torch.bfloat16),
-        backward_dtypes=all_types_and(torch.float16, torch.bfloat16),
         supports_out=False,
-        skips=(
-            # RuntimeError: input->type()->kind() == TypeKind::OptionalTypeINTERNAL ASSERT FAILED
-            # at "../torch/csrc/jit/passes/utils/check_alias_annotation.cpp":270, please report a bug to PyTorch.
-            DecorateInfo(
-                unittest.expectedFailure,
-                "TestJit",
-                "test_variant_consistency_jit",
-                dtypes=(torch.float32,),
-            ),
-        ),
     ),
     OpInfo(
         "nn.functional.smooth_l1_loss",
         ref=reference_smooth_l1_loss,
         sample_inputs_func=sample_inputs_smooth_l1_loss,
         dtypes=floating_types_and(torch.float16, torch.bfloat16),
-        backward_dtypesIfCPU=floating_types_and(),
-        dtypesIfCUDA=floating_types_and(torch.float16),
-        backward_dtypesIfCUDA=floating_types_and(torch.float16),
         supports_out=False,
         skips=(
             # RuntimeError: input->type()->kind() == TypeKind::OptionalTypeINTERNAL ASSERT FAILED

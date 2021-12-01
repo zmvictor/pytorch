@@ -75,6 +75,8 @@ ALLOW_LIST = [
     ("q::_FloatToBfloat16Quantized", datetime.date(2021, 12, 21)),
     ("q::_Bfloat16QuantizedToFloat", datetime.date(2021, 12, 21)),
     ("aten::kl_div_backward", datetime.date(2021, 12, 31)),
+    ("aten::l1_loss_backward.grad_input", datetime.date(2021, 12, 31)),
+    ("aten::smooth_l1_loss_backward.grad_input", datetime.date(2021, 12, 31)),
 ]
 
 ALLOW_LIST_COMPILED = [
