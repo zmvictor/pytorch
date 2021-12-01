@@ -132,6 +132,15 @@
   dispatch:
     CompositeExplicitAutograd: _new_zeros_with_same_feature_meta
 
+# This is a Wrapper around `other.storage().nbytes() / other.itemsize()`
+# necessary for composite compliance purposes. The batching rule returns
+# the first batch stide as to match behavior of _new_zeros_with_same_feature_meta.
+# See the note above for more information.
+- func: _storage_numel(Tensor self) -> int
+  variants: function, method
+  dispatch:
+    CompositeExplicitAutograd: _storage_numel
+
 - func: rename_(Tensor(a!) self, Dimname[]? names) -> Tensor(a!)
   variants: method
 

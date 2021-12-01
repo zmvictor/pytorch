@@ -66,6 +66,10 @@ Tensor _new_zeros_with_same_feature_meta(
   return new_tensor.as_strided(out_sizes, out_strides, other_storage_offset);
 }
 
+int64_t _storage_numel(const at::Tensor& self) {
+  return self.storage().nbytes() / self.itemsize();
+}
+
 } // namespace native
 
 } // namespace at

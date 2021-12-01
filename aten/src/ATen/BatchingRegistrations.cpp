@@ -563,6 +563,14 @@ Tensor _new_zeros_with_same_feature_meta_batching_rule(
   return self_physical_view.getPhysicalToLogicalMap().apply(result);
 }
 
+int64_t _storage_numel_batching_rule(const Tensor& self) {
+  auto physical_view = at::MultiBatchVmapTransform::logicalToPhysical(self);
+  auto num_batch_dims = physical_view.numBatchDims();
+  const auto& physical_tensor = physical_view.tensor();
+  checkBatchDimsAtFrontInLayout(physical_tensor.strides(), num_batch_dims);
+  return physical_tensor.strides()[num_batch_dims - 1];
+}
+
 // What are the semantics of as_strided inside of vmap?
 // y = vmap(lambda x: x.as_strided(sizes, strides, offset))(xs)
 // This returns a view on `x`, `y`, such that each y[i] has:
@@ -1060,6 +1068,7 @@ TORCH_LIBRARY_IMPL(aten, Batched, m) {
   m.impl("_add_batch_dim", native::_add_batch_dim);
   m.impl("_remove_batch_dim", native::_remove_batch_dim);
   m.impl("_make_dual", _make_dual_batching_rule);
+  m.impl("_storage_numel", _storage_numel_batching_rule);
   m.impl("is_same_size", native::is_same_size);
   m.impl("_new_zeros_with_same_feature_meta", _new_zeros_with_same_feature_meta_batching_rule);
 
